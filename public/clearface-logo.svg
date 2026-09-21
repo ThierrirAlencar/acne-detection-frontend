@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <!-- Contorno da cabeça -->
+  <path d="M 250 15 
+           C 310 15, 370 25, 380 95
+           C 385 130, 370 170, 380 180
+           C 400 200, 400 240, 380 260
+           C 370 270, 365 300, 360 320
+           C 350 360, 310 400, 250 400
+           C 190 400, 150 360, 140 320
+           C 135 300, 130 270, 120 260
+           C 100 240, 100 200, 120 180
+           C 130 170, 115 130, 120 95
+           C 130 25, 190 15, 250 15 Z" 
+        fill="none" stroke="black" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Retículo / Mira Verde (Inclinado) -->
+  <g transform="translate(320, 250) rotate(-15)">
+    <!-- Canto Superior Esquerdo -->
+    <path d="M -20 -10 L -20 -20 L -10 -20" fill="none" stroke="#72F29B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Canto Superior Direito -->
+    <path d="M 10 -20 L 20 -20 L 20 -10" fill="none" stroke="#72F29B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Canto Inferior Esquerdo -->
+    <path d="M -20 10 L -20 20 L -10 20" fill="none" stroke="#72F29B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Canto Inferior Direito -->
+    <path d="M 10 20 L 20 20 L 20 10" fill="none" stroke="#72F29B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Ponto Preto Central -->
+  <circle cx="316" cy="252" r="10" fill="black" />
+</svg>

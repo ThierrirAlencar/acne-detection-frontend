@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="./public/clearface.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClearFace</title>
+    <link href="/src/style.css" rel="stylesheet">
+    <style>
+        :root {
+            --cf-background: #f3f5f2;
+            --cf-surface: #ffffff;
+            --cf-border: #e5e7eb;
+            --cf-text: #171a19;
+            --cf-muted: #6b7280;
+            --cf-accent: #3f5148;
+            --cf-accent-light: #e6ebe8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Manrope", sans-serif;
+            background: var(--cf-background);
+            color: var(--cf-text);
+        }
+
+        .mono {
+            font-family: "DM Mono", monospace;
+        }
+
+        .chat-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db transparent;
+        }
+
+        .message-enter {
+            animation: messageEnter 0.2s ease-out;
+        }
+
+        @keyframes messageEnter {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.35;
+            }
+
+            30% {
+                transform: translateY(-4px);
+                opacity: 1;
+            }
+        }
+
+        .sidebar-transition {
+            transition: transform 0.25s ease;
+        }
+
+        @media (min-width: 768px) {
+            .desktop-main {
+                margin-left: 16rem;
+            }
+        }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
