@@ -1,5 +1,6 @@
 export enum acne_severity{
     leve,
     moderada,
-    grave
+    grave,
+    error
 }

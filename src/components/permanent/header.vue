@@ -1,9 +1,62 @@
-<script setup>
+<script setup lang="ts">
+    import { onBeforeUnmount, onMounted, ref } from 'vue';
     import MarketingBanner from '../banners/marketingBanner.vue';
     import Sidebar from '@/components/permanent/sidebar.vue';
+    import AuthenticationModal from '@/components/modals/authenticationModal.vue';
+    import {
+        AUTH_STATE_CHANGED_EVENT,
+        getAuthenticatedUser,
+        logoutUser,
+        type AuthenticatedUser,
+    } from '@/api/services/authService';
+
+    type AuthModalHandle = {
+        openAuthModal: (mode?: 'login' | 'signup') => void;
+    };
+
+    const authModalRef = ref<AuthModalHandle | null>(null);
+    const authenticatedUser = ref<AuthenticatedUser | null>(null);
+
+    function refreshAuthState() {
+        authenticatedUser.value = getAuthenticatedUser();
+    }
+
+    function openLoginModal() {
+        authModalRef.value?.openAuthModal('login');
+    }
+
+    function handleLogout() {
+        logoutUser();
+    }
+
+    function hideSidebar() {
+        document.getElementById('default-sidebar')?.classList.add('-translate-x-full');
+        document.getElementById('sidebar-overlay')?.classList.add('hidden');
+    }
+
+    function showSidebar() {
+        document.getElementById('default-sidebar')?.classList.remove('-translate-x-full');
+        document.getElementById('sidebar-overlay')?.classList.remove('hidden');
+    }
+
+    onMounted(() => {
+        refreshAuthState();
+        window.addEventListener(AUTH_STATE_CHANGED_EVENT, refreshAuthState);
+        document.getElementById('open-sidebar')?.addEventListener('click', showSidebar);
+        document.getElementById('close-sidebar')?.addEventListener('click', hideSidebar);
+        document.getElementById('sidebar-overlay')?.addEventListener('click', hideSidebar);
+    });
+
+    onBeforeUnmount(() => {
+        window.removeEventListener(AUTH_STATE_CHANGED_EVENT, refreshAuthState);
+        document.getElementById('open-sidebar')?.removeEventListener('click', showSidebar);
+        document.getElementById('close-sidebar')?.removeEventListener('click', hideSidebar);
+        document.getElementById('sidebar-overlay')?.removeEventListener('click', hideSidebar);
+    });
 </script>
 
 <template>
+    <AuthenticationModal ref="authModalRef" />
     <Sidebar />
     <header class="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur">
 
@@ -44,13 +97,13 @@
                         <span
                             class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700"
                         >
-                            ONLINE
+                            API STATUS: ONLINE
                         </span>
 
                     </div>
 
                     <p class="hidden text-xs text-gray-500 sm:block">
-                        Assistente de análise dermatológica
+                        Assistente de análise dermatológica desenvolvida por alunos do IFCE Campus Cedro entre os anos de 2024 e 2026 através do programa de bolsas de iniciação científica (PIBIC Jr)!
                     </p>
 
                 </div>
@@ -60,7 +113,22 @@
 
             <div class="flex items-center gap-2">
 
-                <div class="group relative">
+                <div v-if="authenticatedUser" class="flex items-center gap-2">
+                    <span class="hidden text-sm font-medium text-gray-700 sm:inline">
+                        Olá, {{ authenticatedUser.username }}
+                    </span>
+
+                    <button
+                        id="logout-button"
+                        type="button"
+                        class="rounded-lg px-3 py-2 text-xs font-medium text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
+                        @click="handleLogout"
+                    >
+                        Logout
+                    </button>
+                </div>
+
+                <div v-else class="group relative">
 
                     <button
                         id="clear-chat"
@@ -85,6 +153,7 @@
                         type="button"
                         class="rounded-lg px-3 py-2 text-xs font-medium text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
                         aria-describedby="login-as-user-tooltip"
+                        @click="openLoginModal"
                     >
                         Login
                     </button>
@@ -109,4 +178,5 @@
 
         <MarketingBanner></MarketingBanner>
     </header>
+    
 </template>

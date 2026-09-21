@@ -1,20 +1,9 @@
 <script setup lang="ts">
-    import { onBeforeUnmount, onMounted } from 'vue';
+import { getAllInquiries } from '@/api/services/getInquiriesService';
+import type { getInquiriesData } from '@/api/services/getInquiriesService';
+import type { Consultation, ConsultationSeverity, ConsultationStatus } from '@/types/consultation';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
-    type ConsultationStatus = "completado" | "processando" | "erro";
-    type ConsultationSeverity = "leve" | "moderada" | "grave";
-
-    type Consultation = {
-        id: string;
-        date: string;
-        status: ConsultationStatus;
-        severity: ConsultationSeverity | null;
-        gags: number | null;
-        lesions: number | null;
-        title: string;
-        description: string;
-        image: string | null;
-    };
 
     /*
     * =============================================================
@@ -46,60 +35,58 @@
     *
     */
 
-    const consultations: Consultation[] = [
+    // const consultations: Consultation[] = [
 
-        {
-            id: "inq-001",
-            date: "2026-09-20T14:32:00",
-            status: "completado",
-            severity: "moderada",
-            gags: 12,
-            lesions: 18,
-            title: "Avaliação facial",
-            description: "Análise facial realizada através do pipeline de detecção do ClearFace.",
-            image: null
-        },
+    //     {
+    //         id: 1,
+    //         date: "2026-09-20T14:32:00",
+    //         status: "completado",
+    //         severity: "moderada",
+    //         gags: 12,
+    //         lesions: 18,
+    //         title: "Avaliação facial",
+    //         image: null
+    //     },
 
-        {
-            id: "inq-002",
-            date: "2026-09-18T10:15:00",
-            status: "completado",
-            severity: "leve",
-            gags: 6,
-            lesions: 9,
-            title: "Avaliação facial",
-            description: "Nova análise realizada para acompanhamento do quadro.",
-            image: null
-        },
+    //     {
+    //         id: 2,
+    //         date: "2026-09-18T10:15:00",
+    //         status: "completado",
+    //         severity: "leve",
+    //         gags: 6,
+    //         lesions: 9,
+    //         title: "Avaliação facial",
+    //         image: null
+    //     },
 
-        {
-            id: "inq-003",
-            date: "2026-09-14T16:47:00",
-            status: "completado",
-            severity: "moderada",
-            gags: 10,
-            lesions: 14,
-            title: "Acompanhamento",
-            description: "Consulta de acompanhamento da análise anterior.",
-            image: null
-        },
+    //     {
+    //         id: 3,
+    //         date: "2026-09-14T16:47:00",
+    //         status: "completado",
+    //         severity: "moderada",
+    //         gags: 10,
+    //         lesions: 14,
+    //         title: "Acompanhamento",
+    //         image: null
+    //     },
 
-        {
-            id: "inq-004",
-            date: "2026-09-10T09:20:00",
-            status: "erro",
-            severity: null,
-            gags: null,
-            lesions: null,
-            title: "Avaliação facial",
-            description: "Não foi possível concluir o processamento da imagem.",
-            image: null
-        }
+    //     {
+    //         id: 4,
+    //         date: "2026-09-10T09:20:00",
+    //         status: "erro",
+    //         severity: null,
+    //         gags: null,
+    //         lesions: null,
+    //         title: "Avaliação facial",
+    //         image: null
+    //     }
 
-    ];
-
-
-    let filteredConsultations = [...consultations];
+    // ];
+    const consultations = ref<Consultation[]>([]);
+    const isLoading = ref(true);
+    const requestError = ref<string | null>(null);
+    const api_data = ref<getInquiriesData>()
+    let filteredConsultations: Consultation[] = [];
 
     let sortDescending = true;
 
@@ -266,7 +253,7 @@
 
 
             article.dataset.id =
-                consultation.id;
+                String(consultation.id);
 
 
             article.innerHTML = `
@@ -333,7 +320,7 @@
 
 
                         <p class="mt-1 truncate text-xs text-gray-500">
-                            ${consultation.description}
+                            ${consultation.date}
                         </p>
 
 
@@ -438,7 +425,7 @@
 
                         event.stopPropagation();
 
-                        openDetails(button.dataset.id);
+                        openDetails(Number(button.dataset.id));
 
                     }
                 );
@@ -452,7 +439,7 @@
 
                 card.addEventListener(
                     "click",
-                    () => openDetails(card.dataset.id)
+                    () => openDetails(Number(card.dataset.id))
                 );
 
             });
@@ -487,7 +474,7 @@
 
 
         filteredConsultations =
-            consultations.filter(item => {
+            consultations.value.filter(item => {
 
 
                 const matchesSearch =
@@ -495,11 +482,7 @@
 
                     item.title
                         .toLowerCase()
-                        .includes(search) ||
-
-                    item.description
-                        .toLowerCase()
-                        .includes(search);
+                        .includes(search) 
 
 
                 const matchesSeverity =
@@ -573,10 +556,10 @@
     * =============================================================
     */
 
-    function openDetails(id: string | undefined) {
+    function openDetails(id: number | undefined) {
 
         const consultation =
-            consultations.find(
+            consultations.value.find(
                 item => item.id === id
             );
 
@@ -614,7 +597,7 @@
     function updateStatistics() {
 
         const completed =
-            consultations.filter(
+            consultations.value.filter(
                 item =>
                     item.status === "completado"
             );
@@ -651,15 +634,15 @@
         const averageGagsElement = document.getElementById("average-gags");
 
         if (totalConsultations) {
-            totalConsultations.textContent = String(consultations.length);
+            totalConsultations.textContent = api_data.value?.inquiriesAmount ? String(api_data.value?.inquiriesAmount) : "0";
         }
 
         if (completedConsultations) {
-            completedConsultations.textContent = String(completed.length);
+            completedConsultations.textContent = api_data.value?.inquiriesFinished ? String(api_data.value?.inquiriesFinished) : "0";
         }
 
         if (averageGagsElement) {
-            averageGagsElement.textContent = averageGags;
+            averageGagsElement.textContent = api_data.value?.averageGAGSScore? String(api_data.value?.averageGAGSScore) : "0";
         }
 
     }
@@ -685,10 +668,30 @@
         statusFilter?.addEventListener("change", applyFilters);
         sortButton?.addEventListener("click", toggleSort);
 
-        updateStatistics();
-        sortConsultations();
-        renderConsultations();
+        void loadConsultations();
     });
+
+    async function loadConsultations() {
+        isLoading.value = true;
+        requestError.value = null;
+
+        try {
+            api_data.value = await getAllInquiries()
+            consultations.value = api_data.value.inquiriesList;
+            filteredConsultations = [...consultations.value];
+            sortConsultations();
+            updateStatistics();
+            renderConsultations();
+        } catch (error) {
+            console.error("Could not load consultations", error);
+            requestError.value = "Não foi possível carregar as consultas.";
+            filteredConsultations = [];
+            updateStatistics();
+            renderConsultations();
+        } finally {
+            isLoading.value = false;
+        }
+    }
 
     onBeforeUnmount(() => {
         searchInput?.removeEventListener("input", applyFilters);
@@ -710,11 +713,6 @@
             <!-- ================================================= -->
 
             <section class="mb-8">
-
-                <p class="mono mb-2 text-[10px] uppercase tracking-[0.2em] text-gray-400">
-                    Patient / Analysis
-                </p>
-
                 <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">
                     Histórico
                 </h1>
@@ -783,7 +781,7 @@
                 <div class="rounded-2xl border border-gray-200 bg-white p-5">
 
                     <p class="text-xs font-medium text-gray-500">
-                        GAGS médio
+                        GAGS médio 
                     </p>
 
                     <p
@@ -961,6 +959,20 @@
                     id="consultation-list"
                     class="space-y-3"
                 ></div>
+
+                <p
+                    v-if="isLoading"
+                    class="py-8 text-center text-sm text-gray-500"
+                >
+                    Carregando consultas...
+                </p>
+
+                <p
+                    v-else-if="requestError"
+                    class="py-8 text-center text-sm text-red-600"
+                >
+                    {{ requestError }}
+                </p>
 
 
                 <!-- Empty -->

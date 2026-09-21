@@ -87,7 +87,14 @@
                                     License
                                 </a>
                             </li>
-
+                            <li>
+                                <a
+                                    href="https://www.termsfeed.com/live/7405937e-2e88-4825-beea-8ca6418ed0d7"
+                                    class="hover:text-gray-900 hover:underline"
+                                >
+                                    Privacy Policy
+                                </a>
+                            </li>
                         </ul>
 
                     </div>

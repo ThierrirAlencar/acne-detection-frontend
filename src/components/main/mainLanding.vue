@@ -306,7 +306,7 @@
 
                         <div class="mt-7 pt-5 border-t border-gray-100 flex items-center justify-between">
                             <span class="text-sm text-gray-500">
-                                ciencias exatas e da terra
+                                ciencias exatas e da terra - terceiro lugar subregião centro-sul
                             </span>
                         </div>
                     </div>

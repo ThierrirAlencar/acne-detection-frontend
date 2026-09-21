@@ -206,9 +206,9 @@
           `
             Entendi sua pergunta.
 
-            Esta é uma resposta automática do ClearFace. Primeiro envie uma mensagem do rosto, em um local claro, bem iluminado.
+            Esta é uma resposta automática do ClearFace. Primeiro envie uma imagem do rosto, em um local claro e bem iluminado.
 
-            O modelo irá responder com: um breve descrição do seu status de acne, um score matemático da sua condição dermatológica
+            O modelo irá responder com: um breve descrição do seu status de acne, um score matemático da sua condição dermatológica e uma imagem das lesões detectadas em sua face.
           `,
           `
             Entendi sua pergunta.
@@ -223,6 +223,7 @@
             Esta é uma resposta automática do ClearFace. Utilizamos algorítmos complexos de visão computacional através do framework YOLO para detectar e classificar sua condição dermatológica
 
             Após esta etapa, usamos um algorítmo pré treinado para avaliar essa mesma condição e logo após um segundo algorítmo de aprendizado de máquina exibe uma resposta textual resumindo a análise!
+            Os algorítmos forem treinados com um dataset pré processado que permitiu a segmentação das regiões do rosto permitindo uma análise ainda mais precisa. 
           `,
             `
             Entendi sua pergunta.
@@ -507,12 +508,9 @@
 
                     <div class="pl-12">
 
-                        <h1 class="mb-3 text-2xl font-bold tracking-tight sm:text-3xl">
-                            Olá, eu sou o ClearFace!
-                        </h1>
 
                         <p class="max-w-2xl leading-7 text-gray-600">
-                            Sou um sistema automatizado desenvolvido por alunos do IFCE Campus Cedro para auxiliar
+                            Este é um sistema automatizado desenvolvido por alunos do IFCE Campus Cedro para auxiliar
                             na detecção e classificação de lesões causadas pela acne
                             facial utilizando inteligência artificial.
                         </p>
