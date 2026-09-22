@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { handleGetAppointments, type AppointmentsResponse } from "@/api/services/appointmentsService";
+import { useRouter } from "vue-router";
+
+const emit = defineEmits<{
+    close: [];
+}>();
 
 const appointments = ref<AppointmentsResponse[]>([]);
+const router = useRouter();
 
 function formatAppointmentDate(date: Date | string) {
     return new Intl.DateTimeFormat("pt-BR", {
@@ -10,6 +16,13 @@ function formatAppointmentDate(date: Date | string) {
         month: "2-digit",
         year: "numeric"
     }).format(new Date(date));
+}
+
+function openAppointment(appointmentId: number) {
+    void router.push({
+        name: "home",
+        query: { appointment_id: String(appointmentId) }
+    });
 }
 
 onMounted(async () => {
@@ -53,6 +66,7 @@ onMounted(async () => {
             type="button"
             class="ml-auto rounded-lg p-2 text-gray-500 hover:bg-gray-200 md:hidden"
             aria-label="Fechar menu"
+            @click="emit('close')"
         >
             <svg
                 class="h-5 w-5"
@@ -202,6 +216,7 @@ onMounted(async () => {
                     :key="appointment.id"
                     type="button"
                     class="w-full truncate rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-200"
+                    @click="openAppointment(appointment.id)"
                 >
                     Consulta de {{ formatAppointmentDate(appointment.created_at) }}
                 </button>
@@ -217,22 +232,28 @@ onMounted(async () => {
 
     <div class="border-t border-gray-200 p-4">
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center flex-row gap-3">
 
-            <div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-800 text-sm font-bold text-white">
+            <div class="flex w-9 h-9  items-center justify-center rounded-full bg-gray-800 text-sm font-bold text-white">
                 CF
             </div>
 
-            <div class="min-w-0">
+            <div class="min-w-0 w-2/3 flex flex-col justify-center items-left">
 
                 <p class="truncate text-sm font-semibold">
                     ClearFace LM
                 </p>
 
-                <p class="mono text-[10px] text-gray-500">
-                    research system
-                </p>
-
+                    <span
+                        class="rounded-full text-sm bg-green-100 py-0.5 text-[10px] font-semibold text-green-700"
+                    >
+                        API STATUS: Online
+                    </span>
+                    <span
+                        class="rounded-full text-sm bg-green-100 py-0.5 text-[10px] font-semibold text-green-700"
+                    >
+                        USER AUTH: Authenticated
+                    </span>
             </div>
 
         </div>

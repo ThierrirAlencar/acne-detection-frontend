@@ -2,8 +2,9 @@
 import { getAllInquiries } from '@/api/services/getInquiriesService';
 import type { getInquiriesData } from '@/api/services/getInquiriesService';
 import type { Consultation, ConsultationSeverity, ConsultationStatus } from '@/types/consultation';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { isAxiosError } from 'axios';
+import { useRoute } from 'vue-router';
 
 
     /*
@@ -88,6 +89,10 @@ import { isAxiosError } from 'axios';
     const requestError = ref<string | null>(null);
     const requiresAuthentication = ref(false);
     const api_data = ref<getInquiriesData>()
+    const currentPage = ref(1);
+    const pageSize = ref(10);
+    const totalPages = ref(1);
+    const route = useRoute();
     let filteredConsultations: Consultation[] = [];
 
     let sortDescending = true;
@@ -679,8 +684,14 @@ import { isAxiosError } from 'axios';
         requiresAuthentication.value = false;
 
         try {
-            api_data.value = await getAllInquiries()
+            const appointmentId = Number(route.query.appointment_id);
+            api_data.value = await getAllInquiries({
+                page: currentPage.value,
+                take: pageSize.value,
+                ...(Number.isInteger(appointmentId) && appointmentId > 0 ? { appointmentId } : {})
+            });
             consultations.value = api_data.value.inquiriesList;
+            totalPages.value = Math.max(1, Math.ceil(api_data.value.total / pageSize.value));
             filteredConsultations = [...consultations.value];
             sortConsultations();
             updateStatistics();
@@ -698,6 +709,25 @@ import { isAxiosError } from 'axios';
             isLoading.value = false;
         }
     }
+
+    function changePage(page: number) {
+        if (page < 1 || page > totalPages.value || page === currentPage.value) {
+            return;
+        }
+
+        currentPage.value = page;
+        void loadConsultations();
+    }
+
+    function changePageSize() {
+        currentPage.value = 1;
+        void loadConsultations();
+    }
+
+    watch(() => route.query.appointment_id, () => {
+        currentPage.value = 1;
+        void loadConsultations();
+    });
 
     onBeforeUnmount(() => {
         searchInput?.removeEventListener("input", applyFilters);
@@ -956,6 +986,17 @@ import { isAxiosError } from 'axios';
                         Mais recentes
                     </button>
 
+                    <select
+                        v-model.number="pageSize"
+                        class="rounded-lg border border-gray-200 px-2 py-2 text-xs text-gray-500"
+                        aria-label="Consultas por página"
+                        @change="changePageSize"
+                    >
+                        <option :value="5">5 por página</option>
+                        <option :value="10">10 por página</option>
+                        <option :value="25">25 por página</option>
+                    </select>
+
                 </div>
 
 
@@ -1035,23 +1076,25 @@ import { isAxiosError } from 'axios';
             <nav class="mt-6 flex items-center justify-between">
 
                 <p class="text-xs text-gray-400">
-                    Página 1 de 1
+                    Página {{ currentPage }} de {{ totalPages }}
                 </p>
 
                 <div class="flex gap-2">
 
                     <button
                         type="button"
-                        disabled
-                        class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-300"
+                        :disabled="currentPage === 1 || isLoading"
+                        class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 disabled:cursor-not-allowed disabled:text-gray-300"
+                        @click="changePage(currentPage - 1)"
                     >
                         Anterior
                     </button>
 
                     <button
                         type="button"
-                        disabled
-                        class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-300"
+                        :disabled="currentPage === totalPages || isLoading"
+                        class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 disabled:cursor-not-allowed disabled:text-gray-300"
+                        @click="changePage(currentPage + 1)"
                     >
                         Próxima
                     </button>

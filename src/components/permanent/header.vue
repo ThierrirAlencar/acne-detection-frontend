@@ -2,6 +2,7 @@
     import { onBeforeUnmount, onMounted, ref } from 'vue';
     import MarketingBanner from '../banners/marketingBanner.vue';
     import Sidebar from '@/components/permanent/sidebar.vue';
+    import MobileOverlay from '@/components/overlays/mobile_overlay.vue';
     import AuthenticationModal from '@/components/modals/authenticationModal.vue';
     import {
         AUTH_STATE_CHANGED_EVENT,
@@ -42,22 +43,17 @@
     onMounted(() => {
         refreshAuthState();
         window.addEventListener(AUTH_STATE_CHANGED_EVENT, refreshAuthState);
-        document.getElementById('open-sidebar')?.addEventListener('click', showSidebar);
-        document.getElementById('close-sidebar')?.addEventListener('click', hideSidebar);
-        document.getElementById('sidebar-overlay')?.addEventListener('click', hideSidebar);
     });
 
     onBeforeUnmount(() => {
         window.removeEventListener(AUTH_STATE_CHANGED_EVENT, refreshAuthState);
-        document.getElementById('open-sidebar')?.removeEventListener('click', showSidebar);
-        document.getElementById('close-sidebar')?.removeEventListener('click', hideSidebar);
-        document.getElementById('sidebar-overlay')?.removeEventListener('click', hideSidebar);
     });
 </script>
 
 <template>
     <AuthenticationModal ref="authModalRef" />
-    <Sidebar />
+    <Sidebar @close="hideSidebar" />
+    <MobileOverlay @click="hideSidebar" />
     <header class="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur">
 
         <div class="flex h-16 items-center justify-between px-4 sm:px-6">
@@ -69,6 +65,7 @@
                     type="button"
                     class="rounded-lg p-2 text-gray-600 hover:bg-gray-100 md:hidden"
                     aria-label="Abrir menu"
+                    @click="showSidebar"
                 >
                     <svg
                         class="h-6 w-6"
@@ -93,12 +90,6 @@
                         <h2 class="text-sm font-bold sm:text-base">
                             ClearFace LM
                         </h2>
-
-                        <span
-                            class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700"
-                        >
-                            API STATUS: ONLINE
-                        </span>
 
                     </div>
 

@@ -1,5 +1,24 @@
 <script setup>
-    import { onBeforeUnmount, onMounted } from 'vue';
+    import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+    import { useRoute } from 'vue-router';
+    import { getAllInquiries } from '@/api/services/getInquiriesService';
+    import { handleModelDetection } from '@/api/services/detectionService';
+
+    const route = useRoute();
+    const activeAppointmentId = ref(null);
+
+    function refreshActiveAppointment() {
+        const appointmentId = Number(route.query.appointment_id);
+        activeAppointmentId.value = Number.isInteger(appointmentId) && appointmentId > 0
+            ? appointmentId
+            : null;
+    }
+
+    refreshActiveAppointment();
+    watch(() => route.query.appointment_id, async () => {
+        refreshActiveAppointment();
+        await loadActiveConversation();
+    });
     
     /*
     * =========================================================
@@ -18,6 +37,47 @@
 
 
     let isProcessing = false;
+
+    async function loadActiveConversation() {
+        if (!messages || !activeAppointmentId.value) {
+            return;
+        }
+
+        messages.innerHTML = '';
+
+        try {
+            const inquiries = [];
+            let page = 1;
+            let hasNextPage = true;
+
+            while (hasNextPage) {
+                const pageData = await getAllInquiries({
+                    page,
+                    take: 100,
+                    appointmentId: activeAppointmentId.value
+                });
+
+                inquiries.push(...pageData.inquiries);
+                hasNextPage = pageData.hasNextPage;
+                page += 1;
+            }
+
+            inquiries
+                .sort((first, second) => {
+                    const firstDate = first.created_at ?? first.created_atm ?? '';
+                    const secondDate = second.created_at ?? second.created_atm ?? '';
+                    return new Date(firstDate).getTime() - new Date(secondDate).getTime();
+                })
+                .forEach(addInquiryToConversation);
+
+            if (inquiries.length === 0) {
+                addAssistantMessage('Nenhuma análise foi encontrada nesta conversa.');
+            }
+        } catch (error) {
+            console.error('Could not load conversation inquiries', error);
+            addAssistantMessage('Não foi possível carregar esta conversa.');
+        }
+    }
 
     /*
      * =========================================================
@@ -62,8 +122,150 @@
 
     }
 
+    async function sendPreMade(responseIndex) {
+        await new Promise(resolve => setTimeout(resolve, 900));
 
-    function addAssistantMessage(text) {
+        const responses = [
+            "",
+            `
+                Entendi sua pergunta.
+
+                Esta é uma resposta automática do ClearFace. Primeiro envie uma imagem do rosto, em um local claro e bem iluminado.
+
+                O modelo irá responder com: um breve descrição do seu status de acne, um score matemático da sua condição dermatológica e uma imagem das lesões detectadas em sua face.
+            `,
+            `
+                Entendi sua pergunta.
+
+                Esta é uma resposta automática do ClearFace. Com o clearface você pode analisar a situação de acne facial do seu rosto através de algorítmos de visão computacional.
+
+                A pontuação é calculada através do mecânismo IGA mundialmente usado para avaliar a condição dermatológica de pacientes.
+            `,
+            `
+                Entendi sua pergunta.
+
+                Esta é uma resposta automática do ClearFace. Utilizamos algorítmos complexos de visão computacional através do framework YOLO para detectar e classificar sua condição dermatológica
+
+                Após esta etapa, usamos um algorítmo pré treinado para avaliar essa mesma condição e logo após um segundo algorítmo de aprendizado de máquina exibe uma resposta textual resumindo a análise!
+                Os algorítmos forem treinados com um dataset pré processado que permitiu a segmentação das regiões do rosto permitindo uma análise ainda mais precisa. 
+            `,
+                `
+                Entendi sua pergunta.
+
+                Esta é uma resposta automática do ClearFace. A resposta simples é que não, este modelo não deve em hipotese alguma substituir a avaliação de um médico especialista na área. 
+
+                Este projeto é apenas uma prova de conceito da possibilidade de desenvolvimentos de projetos do tipo. Nosso trabalho não foi validado por insituições médicas da área de dermatologia. 
+                
+                Consulte sempre um médico qualificado! <3
+            `,
+        ];
+
+        return responses[responseIndex] || responses[1];
+    }
+
+    async function selectSuggestion(event) {
+        if (activeAppointmentId.value || isProcessing) {
+            return;
+        }
+
+        const button = event.currentTarget;
+        const responseIndex = Number(button.dataset.responseIndex);
+        const message = button.dataset.message;
+
+        if (!message) {
+            return;
+        }
+
+        isProcessing = true;
+        addUserMessage(message);
+        addTypingIndicator();
+
+        try {
+            const response = await sendPreMade(responseIndex);
+            removeTypingIndicator();
+            addAssistantMessage(response);
+        } finally {
+            isProcessing = false;
+        }
+    }
+
+    function addUserImageMessage(image) {
+        const imageSource = URL.createObjectURL(image);
+        const article = document.createElement('article');
+
+        article.className = 'message-enter flex justify-end';
+        article.innerHTML = `
+            <div class="max-w-[85%] sm:max-w-[75%]">
+                <div class="rounded-2xl rounded-br-md bg-gray-900 p-2 shadow-sm">
+                    <img
+                        src="${escapeHTML(imageSource)}"
+                        alt="Imagem enviada para análise"
+                        class="max-h-80 w-full rounded-xl object-cover"
+                    >
+                </div>
+                <p class="mt-1 px-1 text-right text-[10px] text-gray-400">Você</p>
+            </div>
+        `;
+
+        messages.appendChild(article);
+        scrollToBottom();
+    }
+
+    function toImageSource(image) {
+        if (!image) {
+            return null;
+        }
+
+        return image.startsWith('data:') ||
+            image.startsWith('http://') ||
+            image.startsWith('https://') ||
+            image.startsWith('blob:')
+            ? image
+            : `data:image/jpeg;base64,${image}`;
+    }
+
+    function addInquiryToConversation(inquiry) {
+        const imageSource = toImageSource(inquiry.original_base64);
+        const userArticle = document.createElement('article');
+
+        userArticle.className = 'message-enter flex justify-end';
+        userArticle.innerHTML = `
+            <div class="max-w-[85%] sm:max-w-[75%]">
+                <div class="rounded-2xl rounded-br-md bg-gray-900 p-2 shadow-sm">
+                    ${imageSource ? `
+                        <img
+                            src="${escapeHTML(imageSource)}"
+                            alt="Imagem enviada para análise"
+                            class="max-h-80 w-full rounded-xl object-cover"
+                        >
+                    ` : `
+                        <div class="rounded-xl bg-gray-800 px-4 py-8 text-center text-sm text-gray-300">
+                            Imagem enviada para análise
+                        </div>
+                    `}
+                </div>
+                <p class="mt-1 px-1 text-right text-[10px] text-gray-400">Você</p>
+            </div>
+        `;
+        messages.appendChild(userArticle);
+
+        let result = inquiry.result_text || '';
+        if (!result && inquiry.result_json) {
+            try {
+                result = JSON.stringify(JSON.parse(inquiry.result_json), null, 2);
+            } catch {
+                result = inquiry.result_json;
+            }
+        }
+
+        addAssistantMessage(
+            result || `Análise ${inquiry.inquiry_status.toLowerCase()}.`,
+            toImageSource(inquiry.result_base64)
+        );
+    }
+
+
+    function addAssistantMessage(text, imageSource = null) {
 
         const article = document.createElement("article");
 
@@ -90,8 +292,20 @@
 
                     </div>
 
-                    <div class="text-sm leading-7 text-gray-700">
-                        ${escapeHTML(text).replace(/\n/g, "<br>")}
+                    <div class="rounded-2xl rounded-tl-md bg-slate-900 p-2 shadow-sm">
+                        ${imageSource ? `
+                            <div class="rounded-xl p-2">
+                                <img
+                                    src="${escapeHTML(imageSource)}"
+                                    alt="Imagem processada pelo modelo"
+                                    class="max-h-80 w-full rounded-lg object-cover"
+                                >
+                            </div>
+                        ` : ''}
+
+                        <div class="text-left py-2 whitespace-pre-wrap text-sm leading-7 text-gray-400">
+                            ${escapeHTML(text).replace(/\n/g, "<br>")}
+                        </div>
                     </div>
 
                 </div>
@@ -197,145 +411,44 @@
      *
      * =========================================================
      */
-    async function sendPreMade(ext){
-
-      //Delay fake
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const opt = [
-          "",
-          `
-            Entendi sua pergunta.
-
-            Esta é uma resposta automática do ClearFace. Primeiro envie uma imagem do rosto, em um local claro e bem iluminado.
-
-            O modelo irá responder com: um breve descrição do seu status de acne, um score matemático da sua condição dermatológica e uma imagem das lesões detectadas em sua face.
-          `,
-          `
-            Entendi sua pergunta.
-
-            Esta é uma resposta automática do ClearFace. Com o clearface você pode analisar a situação de acne facial do seu rosto através de algorítmos de visão computacional.
-
-            A pontuação é calculada através do mecânismo IGA mundialmente usado para avaliar a condição dermatológica de pacientes.
-          `,
-          `
-            Entendi sua pergunta.
-
-            Esta é uma resposta automática do ClearFace. Utilizamos algorítmos complexos de visão computacional através do framework YOLO para detectar e classificar sua condição dermatológica
-
-            Após esta etapa, usamos um algorítmo pré treinado para avaliar essa mesma condição e logo após um segundo algorítmo de aprendizado de máquina exibe uma resposta textual resumindo a análise!
-            Os algorítmos forem treinados com um dataset pré processado que permitiu a segmentação das regiões do rosto permitindo uma análise ainda mais precisa. 
-          `,
-            `
-            Entendi sua pergunta.
-
-            Esta é uma resposta automática do ClearFace. A resposta simples é que não, este modelo não deve em hipotese alguma substituir a avaliação de um médico especialista na área. 
-
-            Este projeto é apenas uma prova de conceito da possibilidade de desenvolvimentos de projetos do tipo. Nosso trabalho não foi validado por insituições médicas da área de dermatologia. 
-            
-            Consulte sempre um médico qualificado! <3
-          `,
-      ]
-      return opt[ext]
-    }
-    async function sendToAPI(message) {
-
-        /*
-         * Quando o backend estiver pronto, substitua a
-         * implementação simulada por:
-         *
-         * const response = await fetch("/api/chat", {
-         *     method: "POST",
-         *     headers: {
-         *         "Content-Type": "application/json"
-         *     },
-         *     body: JSON.stringify({
-         *         message: message
-         *     })
-         * });
-         *
-         * if (!response.ok) {
-         *     throw new Error("Erro ao comunicar com a API.");
-         * }
-         *
-         * const data = await response.json();
-         *
-         * return data.response;
-         */
-
-
-        await new Promise(resolve => setTimeout(resolve, 900));
-
-
-
-
-        return "";
-    }
-
-
     /*
      * =========================================================
      * SEND MESSAGE
      * =========================================================
      */
 
-    async function handleMessage(message, preMadeResponseIndex = null) {
-
-        message = message.trim();
-
-        if (!message || isProcessing) {
+    async function handleImage(image) {
+        if (!activeAppointmentId.value || isProcessing) {
+            if (!activeAppointmentId.value) {
+                alert('Selecione uma conversa antes de enviar uma imagem.');
+            }
             return;
         }
 
-
         isProcessing = true;
-
         sendButton.disabled = true;
-
         messageInput.disabled = true;
-
-
-        addUserMessage(message);
-
-        messageInput.value = "";
-
-        updateCharacterCount();
-
-
+        addUserImageMessage(image);
         addTypingIndicator();
 
-
         try {
-
-            const response = preMadeResponseIndex === null
-                ? await sendToAPI(message)
-                : await sendPreMade(preMadeResponseIndex);
-
-            removeTypingIndicator();
-
-            addAssistantMessage(response);
-
+            await handleModelDetection({
+                appointment_id: activeAppointmentId.value,
+                image
+            });
+            await loadActiveConversation();
         } catch (error) {
-
             console.error(error);
-
             removeTypingIndicator();
-
             addAssistantMessage(
-                "Não foi possível processar sua mensagem. Verifique a conexão com o servidor e tente novamente."
+                'Não foi possível processar a imagem. Verifique a conexão com o servidor e tente novamente.'
             );
-
         } finally {
-
             isProcessing = false;
-
             sendButton.disabled = false;
-
             messageInput.disabled = false;
-
-            messageInput.focus();
-
+            messageInput.value = '';
         }
-
     }
 
 
@@ -404,35 +517,9 @@
     function submitMessage(event) {
         event.preventDefault();
 
-        if (messageInput) {
-            handleMessage(messageInput.value);
-        }
-    }
-
-    function handleKeydown(event) {
-        if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            chatForm?.requestSubmit();
-        }
-    }
-
-    function resizeMessageInput() {
-        if (!messageInput) {
-            return;
-        }
-
-        messageInput.style.height = "auto";
-        messageInput.style.height = Math.min(messageInput.scrollHeight, 160) + "px";
-        updateCharacterCount();
-    }
-
-    function selectSuggestion(event) {
-        const button = event.currentTarget;
-        const message = button.dataset.message;
-        const responseIndex = Number(button.dataset.responseIndex);
-
-        if (message) {
-            handleMessage(message, responseIndex);
+        const image = messageInput?.files?.[0];
+        if (image) {
+            void handleImage(image);
         }
     }
 
@@ -446,17 +533,14 @@
         newChatButton = document.getElementById("new-chat-button");
 
         chatForm?.addEventListener("submit", submitMessage);
-        messageInput?.addEventListener("keydown", handleKeydown);
-        messageInput?.addEventListener("input", resizeMessageInput);
         clearChat?.addEventListener("click", resetChat);
         newChatButton?.addEventListener("click", resetChat);
         updateCharacterCount();
+        void loadActiveConversation();
     });
 
     onBeforeUnmount(() => {
         chatForm?.removeEventListener("submit", submitMessage);
-        messageInput?.removeEventListener("keydown", handleKeydown);
-        messageInput?.removeEventListener("input", resizeMessageInput);
         clearChat?.removeEventListener("click", resetChat);
         newChatButton?.removeEventListener("click", resetChat);
     });
@@ -469,6 +553,12 @@
     <!-- ===================================================== -->
 
     <main class="flex min-h-[calc(100vh-4rem)] flex-1 flex-col">
+        <div
+            v-if="activeAppointmentId"
+            class="border-b border-gray-200 bg-white px-4 py-3 text-center text-xs text-gray-500 sm:px-6"
+        >
+            Conversa #{{ activeAppointmentId }}
+        </div>
         <!-- Chat messages -->
         <section
             id="chat-container"
@@ -518,7 +608,7 @@
 
                         <!-- Suggested prompts -->
 
-                        <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                        <div v-if="!activeAppointmentId" class="mt-6 grid gap-3 sm:grid-cols-2">
 
                             <button
                                 class="suggestion rounded-xl border border-gray-200 bg-white p-4 text-left transition hover:border-gray-400 hover:shadow-sm"
@@ -601,7 +691,7 @@
         <!-- CHAT INPUT -->
         <!-- ================================================= -->
 
-        <section class="sticky bottom-0 bg-gradient-to-t from-[#f3f5f2] via-[#f3f5f2] to-transparent px-4 pb-4 pt-6 sm:px-6">
+        <section class="sticky bottom-0 bg-linear-to-t from-[#f3f5f2] via-[#f3f5f2] to-transparent px-4 pb-4 pt-6 sm:px-6">
 
             <div class="mx-auto w-full max-w-3xl">
 
@@ -610,7 +700,7 @@
                     <div class="relative rounded-2xl border border-gray-300 bg-white shadow-sm transition focus-within:border-gray-500 focus-within:ring-2 focus-within:ring-gray-200">
 
                         <label
-                            for="file-input"
+                            for="message-input"
                             class="sr-only"
                         >
                             Envie sua Selfie!
@@ -621,7 +711,7 @@
                             type="file"
                             accept="image/*" 
                             placeholder="Envie uma selfie do rosto para analise!...."
-                            class="block max-h-40 min-h-[56px] w-full resize-none rounded-2xl bg-transparent px-4 py-4 pr-14 text-sm outline-none placeholder:text-gray-400"
+                            class="block max-h-40 min-h-14 w-full resize-none rounded-2xl bg-transparent px-4 py-4 pr-14 text-sm outline-none placeholder:text-gray-400"
                         ></input>
 
 

@@ -3,7 +3,6 @@
 
 </script>
 
-<template>
-    <Mobile_overlay />
+    <template>
     <MainData />
 </template>
