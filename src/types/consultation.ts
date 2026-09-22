@@ -9,4 +9,5 @@ export type Consultation = {
         lesions: number | null;
         title: string;
         image: string | null;
+        imagebase64:string | null;
 };

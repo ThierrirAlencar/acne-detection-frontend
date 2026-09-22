@@ -1,3 +1,26 @@
+<script setup lang="ts">
+import { onMounted, ref } from "vue";
+import { handleGetAppointments, type AppointmentsResponse } from "@/api/services/appointmentsService";
+
+const appointments = ref<AppointmentsResponse[]>([]);
+
+function formatAppointmentDate(date: Date | string) {
+    return new Intl.DateTimeFormat("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    }).format(new Date(date));
+}
+
+onMounted(async () => {
+    try {
+        appointments.value = await handleGetAppointments();
+    } catch (error) {
+        console.error("Could not load appointments", error);
+    }
+});
+</script>
+
 <template>
     <!-- ========================================================= -->
 
@@ -167,16 +190,20 @@
 
             <div id="conversation-list" class="space-y-1">
 
-                <button
-                    class="w-full truncate rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-200"
+                <p
+                    v-if="appointments.length === 0"
+                    class="px-3 py-2 text-sm text-gray-400"
                 >
-                    Avaliação facial
-                </button>
+                    Nenhuma conversa encontrada
+                </p>
 
                 <button
+                    v-for="appointment in appointments"
+                    :key="appointment.id"
+                    type="button"
                     class="w-full truncate rounded-lg px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-200"
                 >
-                    Sobre o ClearFace
+                    Consulta de {{ formatAppointmentDate(appointment.created_at) }}
                 </button>
 
             </div>

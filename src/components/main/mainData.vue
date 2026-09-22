@@ -3,6 +3,7 @@ import { getAllInquiries } from '@/api/services/getInquiriesService';
 import type { getInquiriesData } from '@/api/services/getInquiriesService';
 import type { Consultation, ConsultationSeverity, ConsultationStatus } from '@/types/consultation';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { isAxiosError } from 'axios';
 
 
     /*
@@ -85,6 +86,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
     const consultations = ref<Consultation[]>([]);
     const isLoading = ref(true);
     const requestError = ref<string | null>(null);
+    const requiresAuthentication = ref(false);
     const api_data = ref<getInquiriesData>()
     let filteredConsultations: Consultation[] = [];
 
@@ -674,6 +676,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
     async function loadConsultations() {
         isLoading.value = true;
         requestError.value = null;
+        requiresAuthentication.value = false;
 
         try {
             api_data.value = await getAllInquiries()
@@ -684,7 +687,10 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
             renderConsultations();
         } catch (error) {
             console.error("Could not load consultations", error);
-            requestError.value = "Não foi possível carregar as consultas.";
+            requiresAuthentication.value = isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0);
+            requestError.value = requiresAuthentication.value
+                ? null
+                : "Não foi possível carregar as consultas.";
             filteredConsultations = [];
             updateStatistics();
             renderConsultations();
@@ -965,6 +971,13 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
                     class="py-8 text-center text-sm text-gray-500"
                 >
                     Carregando consultas...
+                </p>
+
+                <p
+                    v-else-if="requiresAuthentication"
+                    class="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center text-sm text-gray-600"
+                >
+                    Faça login para consultar seu histórico de análises.
                 </p>
 
                 <p

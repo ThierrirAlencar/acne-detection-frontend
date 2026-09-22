@@ -147,7 +147,7 @@
                         criar novo chat
                 </span>
                 </div>
-                <div class="group relative">
+                <div v-if="!authenticatedUser" class="group relative">
                     <button
                         id="login-button"
                         type="button"

@@ -23,6 +23,7 @@ export interface LoginResponse {
 export type AuthenticatedUser = LoginResponse["user"];
 
 export const AUTH_STATE_CHANGED_EVENT = "auth-state-changed";
+const AUTH_TOKEN_STORAGE_KEY = "auth_user_token";
 
 function notifyAuthStateChanged() {
     window.dispatchEvent(new Event(AUTH_STATE_CHANGED_EVENT));
@@ -30,32 +31,21 @@ function notifyAuthStateChanged() {
 
 export function getAuthenticatedUser(): AuthenticatedUser | null {
     const storedUser = localStorage.getItem("auth_user");
+    const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
 
-    if (!storedUser) return null;
+    if (!storedUser || !token) return null;
 
     try {
-        const user = JSON.parse(storedUser) as AuthenticatedUser;
-        const token = localStorage.getItem(`auth_user_token-${user.id}`);
-
-        return token ? user : null;
+        return JSON.parse(storedUser) as AuthenticatedUser;
     } catch {
         return null;
     }
 }
 
 export function logoutUser() {
-    const storedUser = localStorage.getItem("auth_user");
-
-    if (storedUser) {
-        try {
-            const user = JSON.parse(storedUser) as AuthenticatedUser;
-            localStorage.removeItem(`auth_user_token-${user.id}`);
-        } catch {
-            // Ignore malformed local authentication data.
-        }
-    }
-
+    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
     localStorage.removeItem("auth_user");
+    api.defaults.headers.common['Authorization'] = undefined
     alert("usuário deslogado!")
     notifyAuthStateChanged();
 }
@@ -78,11 +68,11 @@ export async function loginService(body: LoginBody): Promise<LoginResponse> {
         throw new Error("Requisição não retornou o esperado");
     }
 
-    const key = `auth_user_token-${response.data.user.id}`;
-    localStorage.setItem(key, response.data.token);
+    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, response.data.token);
     localStorage.setItem("auth_user", JSON.stringify(response.data.user));
     notifyAuthStateChanged();
 
+    api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`
     return response.data;
 }
 

@@ -11,6 +11,7 @@ type InquiryResponse = {
     gags_score:number | null;
     lesions_count:number | null;
     severity:ConsultationSeverity | null;
+    base64:string | null;
 };
 
 function mapStatus(status: string): Consultation["status"] {
@@ -35,7 +36,12 @@ export interface getInquiriesData {
 }
 
 export async function getAllInquiries(): Promise<getInquiriesData> {
-    const response = await api.get<InquiryResponse[]>("/inquiries");
+    const authToken = localStorage.getItem("auth_user_token");
+    const response = await api.get<InquiryResponse[]>("/inquiries/",{
+        headers:{
+            Authorization:`Bearer ${authToken}`
+        }
+    });
 
     var gags_score = 0
     var finished_inquiries = 0;
@@ -48,7 +54,12 @@ export async function getAllInquiries(): Promise<getInquiriesData> {
             gags: inquiry.gags_score,
             lesions: inquiry.lesions_count,
             title: "Avaliação facial",
-            image: inquiry.image_url ?? null
+            image: inquiry.base64
+                ? inquiry.base64.startsWith("data:")
+                    ? inquiry.base64
+                    : `data:image/jpeg;base64,${inquiry.base64}`
+                : null,
+            imagebase64:inquiry.base64
     }));
 
     consultation_list.forEach(e=>{
