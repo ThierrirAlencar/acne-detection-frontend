@@ -83,5 +83,5 @@ export async function registerUserService(body: RegisterBody): Promise<boolean> 
         },
     });
 
-    return response.status === 201;
+    return response.status === 200;
 }

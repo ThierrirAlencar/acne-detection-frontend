@@ -1,11 +1,19 @@
-<script setup>
+<script setup lang="ts">
     import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
     import { useRoute } from 'vue-router';
     import { getAllInquiries } from '@/api/services/getInquiriesService';
+    import type { InquiryResponse } from '@/api/services/getInquiriesService';
     import { handleModelDetection } from '@/api/services/detectionService';
+    import { handleTextDescription } from '@/api/services/descriptionService';
 
     const route = useRoute();
-    const activeAppointmentId = ref(null);
+    const activeAppointmentId = ref<number | null>(null);
+
+    type ScoreSummary = {
+        gagsScore: number | null;
+        severity: string | null;
+        lesionsCount: number | null;
+    };
 
     function refreshActiveAppointment() {
         const appointmentId = Number(route.query.appointment_id);
@@ -26,13 +34,13 @@
     * =========================================================
     */
 
-    let chatForm = null;
-    let messageInput = null;
-    let messages = null;
-    let sendButton = null;
-    let characterCount = null;
-    let clearChat = null;
-    let newChatButton = null;
+    let chatForm: HTMLFormElement | null = null;
+    let messageInput: HTMLInputElement | null = null;
+    let messages: HTMLElement | null = null;
+    let sendButton: HTMLButtonElement | null = null;
+    let characterCount: HTMLElement | null = null;
+    let clearChat: HTMLElement | null = null;
+    let newChatButton: HTMLElement | null = null;
 
 
 
@@ -46,7 +54,7 @@
         messages.innerHTML = '';
 
         try {
-            const inquiries = [];
+            const inquiries: InquiryResponse[] = [];
             let page = 1;
             let hasNextPage = true;
 
@@ -62,7 +70,34 @@
                 page += 1;
             }
 
-            inquiries
+            const inquiriesWithDescriptions = await Promise.all(
+                inquiries.map(async (inquiry) => {
+                    try {
+                        if (inquiry.gags_score === null || inquiry.severity === null) {
+                            return inquiry;
+                        }
+
+                        const description = await handleTextDescription({
+                            inquiry_id: inquiry.id,
+                            detection: {
+                                gags_score: inquiry.gags_score,
+                                gags_severity: inquiry.severity,
+                                region_counts: getRegionCounts(inquiry),
+                            },
+                        });
+
+                        return {
+                            ...inquiry,
+                            result_text: description.result_text || inquiry.result_text,
+                        };
+                    } catch (error) {
+                        console.error(`Could not load description for inquiry ${inquiry.id}`, error);
+                        return inquiry;
+                    }
+                })
+            );
+
+            inquiriesWithDescriptions
                 .sort((first, second) => {
                     const firstDate = first.created_at ?? first.created_atm ?? '';
                     const secondDate = second.created_at ?? second.created_atm ?? '';
@@ -85,7 +120,7 @@
      * =========================================================
     */
 
-    function escapeHTML(text) {
+    function escapeHTML(text: string) {
 
         const div = document.createElement("div");
 
@@ -96,7 +131,7 @@
     }
 
 
-    function addUserMessage(text) {
+    function addUserMessage(text: string) {
 
         const article = document.createElement("article");
 
@@ -109,20 +144,20 @@
                     ${escapeHTML(text).replace(/\n/g, "<br>")}
                 </div>
 
-                <p class="mt-1 px-1 text-right text-[10px] text-gray-400">
+                <p class="mt-1 px-1 text-right text-[20px] text-gray-400">
                     Você
                 </p>
 
             </div>
         `;
 
-        messages.appendChild(article);
+        messages?.appendChild(article);
 
         scrollToBottom();
 
     }
 
-    async function sendPreMade(responseIndex) {
+    async function sendPreMade(responseIndex: number) {
         await new Promise(resolve => setTimeout(resolve, 900));
 
         const responses = [
@@ -160,15 +195,15 @@
             `,
         ];
 
-        return responses[responseIndex] || responses[1];
+        return responses[responseIndex] ?? responses[1] ?? '';
     }
 
-    async function selectSuggestion(event) {
+    async function selectSuggestion(event: Event) {
         if (activeAppointmentId.value || isProcessing) {
             return;
         }
 
-        const button = event.currentTarget;
+        const button = event.currentTarget as HTMLElement;
         const responseIndex = Number(button.dataset.responseIndex);
         const message = button.dataset.message;
 
@@ -189,7 +224,7 @@
         }
     }
 
-    function addUserImageMessage(image) {
+    function addUserImageMessage(image: File) {
         const imageSource = URL.createObjectURL(image);
         const article = document.createElement('article');
 
@@ -207,11 +242,11 @@
             </div>
         `;
 
-        messages.appendChild(article);
+        messages?.appendChild(article);
         scrollToBottom();
     }
 
-    function toImageSource(image) {
+    function toImageSource(image: string | null) {
         if (!image) {
             return null;
         }
@@ -224,7 +259,45 @@
             : `data:image/jpeg;base64,${image}`;
     }
 
-    function addInquiryToConversation(inquiry) {
+    function getResultText(inquiry: InquiryResponse) {
+        let result = inquiry.result_text || '';
+
+        if (!result && inquiry.result_json) {
+            try {
+                result = JSON.stringify(JSON.parse(inquiry.result_json), null, 2);
+            } catch {
+                result = inquiry.result_json;
+            }
+        }
+
+        return result
+            .split('\n')
+            .filter(line => !/gags\s*score\s*:|severity\s*:/i.test(line))
+            .join('\n')
+            .trim();
+    }
+
+    function getRegionCounts(inquiry: InquiryResponse): Record<string, number> {
+        if (inquiry.region_counts) {
+            return inquiry.region_counts;
+        }
+
+        if (!inquiry.result_json) {
+            return {};
+        }
+
+        try {
+            const result = JSON.parse(inquiry.result_json) as {
+                region_counts?: Record<string, number>;
+            };
+
+            return result.region_counts ?? {};
+        } catch {
+            return {};
+        }
+    }
+
+    function addInquiryToConversation(inquiry: InquiryResponse) {
         const imageSource = toImageSource(inquiry.original_base64);
         const userArticle = document.createElement('article');
 
@@ -247,25 +320,28 @@
                 <p class="mt-1 px-1 text-right text-[10px] text-gray-400">Você</p>
             </div>
         `;
-        messages.appendChild(userArticle);
-
-        let result = inquiry.result_text || '';
-        if (!result && inquiry.result_json) {
-            try {
-                result = JSON.stringify(JSON.parse(inquiry.result_json), null, 2);
-            } catch {
-                result = inquiry.result_json;
-            }
-        }
+        messages?.appendChild(userArticle);
 
         addAssistantMessage(
-            result || `Análise ${inquiry.inquiry_status.toLowerCase()}.`,
-            toImageSource(inquiry.result_base64)
+            getResultText(inquiry) || `Análise ${inquiry.inquiry_status.toLowerCase()}.`,
+            toImageSource(inquiry.result_base64),
+            {
+                gagsScore: inquiry.gags_score,
+                severity: inquiry.severity,
+                lesionsCount: inquiry.lesions_count,
+            }
         );
     }
 
 
-    function addAssistantMessage(text, imageSource = null) {
+    function addAssistantMessage(
+        text: string,
+        imageSource: string | null = null,
+        scores: ScoreSummary | null = null
+    ) {
+        const formattedText = escapeHTML(text.trim())
+            .replace(/^[ \t]+/gm, '')
+            .replace(/\n/g, '<br>');
 
         const article = document.createElement("article");
 
@@ -303,9 +379,30 @@
                             </div>
                         ` : ''}
 
-                        <div class="text-left py-2 whitespace-pre-wrap text-sm leading-7 text-gray-400">
-                            ${escapeHTML(text).replace(/\n/g, "<br>")}
-                        </div>
+                        ${scores && (scores.gagsScore !== null || scores.severity || scores.lesionsCount !== null) ? `
+                            <div class="mb-2 flex flex-wrap justify-end gap-2 border-b border-slate-700 px-2 pb-3">
+                                ${scores.gagsScore !== null ? `
+                                    <span class="rounded-lg bg-slate-800 px-3 py-1.5 text-right text-xs text-slate-300">
+                                        <strong class="block text-[9px] uppercase tracking-wider text-slate-500">GAGS</strong>
+                                        ${escapeHTML(String(scores.gagsScore))}
+                                    </span>
+                                ` : ''}
+                                ${scores.severity ? `
+                                    <span class="rounded-lg bg-slate-800 px-3 py-1.5 text-right text-xs text-slate-300">
+                                        <strong class="block text-[9px] uppercase tracking-wider text-slate-500">Severidade</strong>
+                                        ${escapeHTML(String(scores.severity))}
+                                    </span>
+                                ` : ''}
+                                ${scores.lesionsCount !== null ? `
+                                    <span class="rounded-lg bg-slate-800 px-3 py-1.5 text-right text-xs text-slate-300">
+                                        <strong class="block text-[9px] uppercase tracking-wider text-slate-500">Lesões</strong>
+                                        ${escapeHTML(String(scores.lesionsCount))}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        ` : ''}
+
+                        <div class="py-2 text-left whitespace-pre-wrap text-sm leading-7 text-gray-400">${formattedText}</div>
                     </div>
 
                 </div>
@@ -313,7 +410,7 @@
             </div>
         `;
 
-        messages.appendChild(article);
+        messages?.appendChild(article);
 
         scrollToBottom();
 
@@ -354,7 +451,7 @@
             </div>
         `;
 
-        messages.appendChild(article);
+        messages?.appendChild(article);
 
         scrollToBottom();
 
@@ -377,6 +474,9 @@
         const container = document.getElementById("chat-container");
 
         requestAnimationFrame(() => {
+            if (!container) {
+                return;
+            }
 
             container.scrollTo({
                 top: container.scrollHeight,
@@ -417,7 +517,7 @@
      * =========================================================
      */
 
-    async function handleImage(image) {
+    async function handleImage(image: File) {
         if (!activeAppointmentId.value || isProcessing) {
             if (!activeAppointmentId.value) {
                 alert('Selecione uma conversa antes de enviar uma imagem.');
@@ -426,6 +526,11 @@
         }
 
         isProcessing = true;
+        if (!sendButton || !messageInput) {
+            isProcessing = false;
+            return;
+        }
+
         sendButton.disabled = true;
         messageInput.disabled = true;
         addUserImageMessage(image);
@@ -478,6 +583,9 @@
      */
 
     function resetChat() {
+        if (!messages || !messageInput) {
+            return;
+        }
 
         messages.innerHTML = `
             <article class="message-enter">
@@ -514,7 +622,7 @@
     }
 
 
-    function submitMessage(event) {
+    function submitMessage(event: Event) {
         event.preventDefault();
 
         const image = messageInput?.files?.[0];
@@ -524,10 +632,10 @@
     }
 
     onMounted(() => {
-        chatForm = document.getElementById("chat-form");
-        messageInput = document.getElementById("message-input");
+        chatForm = document.getElementById("chat-form") as HTMLFormElement | null;
+        messageInput = document.getElementById("message-input") as HTMLInputElement | null;
         messages = document.getElementById("messages");
-        sendButton = document.getElementById("send-button");
+        sendButton = document.getElementById("send-button") as HTMLButtonElement | null;
         characterCount = document.getElementById("character-count");
         clearChat = document.getElementById("clear-chat");
         newChatButton = document.getElementById("new-chat-button");

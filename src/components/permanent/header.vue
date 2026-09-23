@@ -1,9 +1,11 @@
 <script setup lang="ts">
     import { onBeforeUnmount, onMounted, ref } from 'vue';
+    import { useRouter } from 'vue-router';
     import MarketingBanner from '../banners/marketingBanner.vue';
     import Sidebar from '@/components/permanent/sidebar.vue';
     import MobileOverlay from '@/components/overlays/mobile_overlay.vue';
     import AuthenticationModal from '@/components/modals/authenticationModal.vue';
+    import { handleCreateAppointments } from '@/api/services/appointmentsService';
     import {
         AUTH_STATE_CHANGED_EVENT,
         getAuthenticatedUser,
@@ -15,8 +17,15 @@
         openAuthModal: (mode?: 'login' | 'signup') => void;
     };
 
+    type SidebarHandle = {
+        refreshAppointments: () => Promise<void>;
+    };
+
     const authModalRef = ref<AuthModalHandle | null>(null);
+    const sidebarRef = ref<SidebarHandle | null>(null);
     const authenticatedUser = ref<AuthenticatedUser | null>(null);
+    const router = useRouter();
+    const isCreatingAppointment = ref(false);
 
     function refreshAuthState() {
         authenticatedUser.value = getAuthenticatedUser();
@@ -28,6 +37,30 @@
 
     function handleLogout() {
         logoutUser();
+    }
+
+    async function createAppointment() {
+        if (!authenticatedUser.value || isCreatingAppointment.value) {
+            if (!authenticatedUser.value) {
+                openLoginModal();
+            }
+            return;
+        }
+
+        try {
+            isCreatingAppointment.value = true;
+            const appointment = await handleCreateAppointments();
+
+            await router.push({
+                name: 'home',
+                query: { appointment_id: String(appointment.id) },
+            });
+            await sidebarRef.value?.refreshAppointments();
+        } catch (error) {
+            console.error('Could not create appointment', error);
+        } finally {
+            isCreatingAppointment.value = false;
+        }
     }
 
     function hideSidebar() {
@@ -52,7 +85,7 @@
 
 <template>
     <AuthenticationModal ref="authModalRef" />
-    <Sidebar @close="hideSidebar" />
+    <Sidebar ref="sidebarRef" @close="hideSidebar" @new-chat="createAppointment" />
     <MobileOverlay @click="hideSidebar" />
     <header class="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur">
 
@@ -86,10 +119,10 @@
                 <div>
 
                     <div class="flex items-center gap-2">
-
+<!-- 
                         <h2 class="text-sm font-bold sm:text-base">
-                            ClearFace LM
-                        </h2>
+                            Visão Computacional 
+                        </h2> -->
 
                     </div>
 
@@ -103,6 +136,16 @@
 
 
             <div class="flex items-center gap-2">
+
+                <button
+                    id="clear-chat"
+                    type="button"
+                    class="rounded-lg px-3 py-2 text-xs font-medium text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 disabled:cursor-wait disabled:opacity-50"
+                    :disabled="isCreatingAppointment"
+                    @click="createAppointment"
+                >
+                    {{ isCreatingAppointment ? 'Criando conversa...' : 'Nova conversa' }}
+                </button>
 
                 <div v-if="authenticatedUser" class="flex items-center gap-2">
                     <span class="hidden text-sm font-medium text-gray-700 sm:inline">
@@ -119,25 +162,6 @@
                     </button>
                 </div>
 
-                <div v-else class="group relative">
-
-                    <button
-                        id="clear-chat"
-                        type="button"
-                        class="rounded-lg px-3 py-2 text-xs font-medium text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
-                        aria-describedby="clear-chat-tooltip"
-                    >
-                        Limpar conversa
-                    </button>
-
-                    <span
-                        id="clear-chat-tooltip"
-                        role="tooltip"
-                        class="pointer-events-none absolute right-0 top-full z-30 mt-2 w-max max-w-[calc(100vw-2rem)] rounded-lg bg-gray-900 px-3 py-2 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-                    >
-                        criar novo chat
-                </span>
-                </div>
                 <div v-if="!authenticatedUser" class="group relative">
                     <button
                         id="login-button"

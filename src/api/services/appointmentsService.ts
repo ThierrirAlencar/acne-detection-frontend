@@ -9,6 +9,22 @@ export interface AppointmentsResponse {
     user_id: number
 }
 
+export async function handleCreateAppointments(): Promise<AppointmentsResponse> {
+    const authToken = localStorage.getItem("auth_user_token");
+    const response = await api.post<AppointmentsResponse>("/appointments/", {}, {
+        headers:{
+            "Content-Type":"application/json",
+            Authorization:`Bearer ${authToken}` 
+        }
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+        throw new Error(response.status + "  " + response.statusText);
+    }
+
+    return response.data;
+}
+
 export async function handleGetAppointments():Promise<AppointmentsResponse[]>{
     const authToken = localStorage.getItem("auth_user_token");
     const response = await api.get<AppointmentsResponse[]>("/appointments/",{

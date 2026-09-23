@@ -15,6 +15,7 @@ export type InquiryResponse = {
     original_base64:string | null
     result_text?: string | null;
     result_json?: string | null;
+    region_counts?: Record<string, number> | null;
     appointment_id?: number;
 };
 

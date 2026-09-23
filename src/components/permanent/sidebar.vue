@@ -5,6 +5,7 @@ import { useRouter } from "vue-router";
 
 const emit = defineEmits<{
     close: [];
+    "new-chat": [];
 }>();
 
 const appointments = ref<AppointmentsResponse[]>([]);
@@ -25,13 +26,17 @@ function openAppointment(appointmentId: number) {
     });
 }
 
-onMounted(async () => {
+async function refreshAppointments() {
     try {
         appointments.value = await handleGetAppointments();
     } catch (error) {
         console.error("Could not load appointments", error);
     }
-});
+}
+
+defineExpose({ refreshAppointments });
+
+onMounted(refreshAppointments);
 </script>
 
 <template>
@@ -51,14 +56,11 @@ onMounted(async () => {
 
     <div class="flex h-20 items-center border-b border-gray-200 px-5">
 
-        <div>
-            <h1 class="text-xl font-bold tracking-tight">
+        <div class="flex flex-row justify-center items-center gap-2">
+            <img src="../../../public/new_ico.jpg" width="50px">
+            <h1 class="text-2xl font-bold tracking-tight">
                 ClearFace
             </h1>
-
-            <p class="mono text-[8px] uppercase tracking-widest text-gray-500">
-                Pipeline Multimodal de Visão Computacional e Linguagem Natural para tratamento da Acne
-            </p>
         </div>
 
         <button
@@ -94,6 +96,7 @@ onMounted(async () => {
             id="new-chat-button"
             type="button"
             class="flex w-full items-center gap-3 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold transition hover:bg-gray-50"
+            @click="emit('new-chat')"
         >
 
             <svg
