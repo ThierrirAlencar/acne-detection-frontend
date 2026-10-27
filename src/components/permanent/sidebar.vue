@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import { handleGetAppointments, type AppointmentsResponse } from "@/api/services/appointmentsService";
+import {
+    AUTH_STATE_CHANGED_EVENT,
+    getAuthenticatedUser,
+} from "@/api/services/authService";
+import { pingAPI } from "@/api/services/pingAPI";
 import { useRouter } from "vue-router";
 
 const emit = defineEmits<{
@@ -9,7 +14,10 @@ const emit = defineEmits<{
 }>();
 
 const appointments = ref<AppointmentsResponse[]>([]);
+const apiOnline = ref<boolean | null>(null);
+const isAuthenticated = ref(false);
 const router = useRouter();
+let apiStatusInterval: ReturnType<typeof setInterval> | undefined;
 
 function formatAppointmentDate(date: Date | string) {
     return new Intl.DateTimeFormat("pt-BR", {
@@ -34,9 +42,34 @@ async function refreshAppointments() {
     }
 }
 
+function refreshAuthState() {
+    isAuthenticated.value = getAuthenticatedUser() !== null;
+}
+
+async function refreshApiStatus() {
+    apiOnline.value = await pingAPI();
+}
+
 defineExpose({ refreshAppointments });
 
-onMounted(refreshAppointments);
+onMounted(() => {
+    void refreshAppointments();
+    refreshAuthState();
+    void refreshApiStatus();
+    apiStatusInterval = setInterval(() => {
+        void refreshApiStatus();
+    }, 30000);
+    window.addEventListener(AUTH_STATE_CHANGED_EVENT, refreshAuthState);
+    window.addEventListener("storage", refreshAuthState);
+});
+
+onBeforeUnmount(() => {
+    if (apiStatusInterval !== undefined) {
+        clearInterval(apiStatusInterval);
+    }
+    window.removeEventListener(AUTH_STATE_CHANGED_EVENT, refreshAuthState);
+    window.removeEventListener("storage", refreshAuthState);
+});
 </script>
 
 <template>
@@ -248,14 +281,20 @@ onMounted(refreshAppointments);
                 </p>
 
                     <span
-                        class="rounded-full text-sm bg-green-100 py-0.5 text-[10px] font-semibold text-green-700"
+                        class="rounded-full text-sm py-0.5 text-[10px] font-semibold"
+                        :class="apiOnline === null
+                            ? 'bg-gray-100 text-gray-600'
+                            : apiOnline
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'"
                     >
-                        API STATUS: Online
+                        API STATUS: {{ apiOnline === null ? "Checking..." : apiOnline ? "Online" : "Offline" }}
                     </span>
                     <span
-                        class="rounded-full text-sm bg-green-100 py-0.5 text-[10px] font-semibold text-green-700"
+                        class="rounded-full text-sm py-0.5 text-[10px] font-semibold"
+                        :class="isAuthenticated ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
                     >
-                        USER AUTH: Authenticated
+                        USER AUTH: {{ isAuthenticated ? "Authenticated" : "Unauthenticated" }}
                     </span>
             </div>
 
