@@ -49,7 +49,7 @@
                     <div class="mt-9 flex flex-col gap-3 sm:flex-row">
 
                         <a
-                            href="index.html"
+                            href="/home"
                             class="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-700"
                         >
 
@@ -273,7 +273,7 @@
             <!-- Section header -->
             <div class="max-w-2xl mb-14">
                 <h2 class="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900">
-                    Premiações e reconhecimentos.
+                    Premiações e Participações.
                 </h2>
             </div>
 
@@ -313,6 +313,42 @@
                     <img
                         src="../../../public/images/banner-image-2.jpeg"
                         alt="Reconhecimento recebido pelo projeto ClearFace"
+                        class="h-64 w-full rounded-2xl object-cover object-center md:h-auto md:w-1/2"
+                    >
+                </article>
+
+                <article class="group relative flex flex-col gap-7 overflow-hidden rounded-3xl border border-gray-200 bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-gray-200/50 md:flex-row md:items-stretch">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-start justify-between gap-6">
+                            <div class="flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-600 text-white shrink-0">
+                                <span class="font-mono text-lg">#5</span>
+                            </div>
+
+                            <span class="font-mono text-xs uppercase tracking-widest text-gray-400">
+                            23 / 09 / 2026
+                            </span>
+                        </div>
+
+                        <div class="mt-8">
+
+                            <h3 class="mt-2 text-xl font-semibold text-gray-900">
+                                Participação na primeira mostra de inovação e empreendedorismo do IFCE Campus Cedro
+                            </h3>
+
+                            <p class="mt-3 text-sm leading-relaxed text-gray-500">
+                                Apresentação do projeto ClearFace na primeira mostra de inovação e empreendedorismo do IFCE Campus Cedro, em setembro de 2026. Evento realizado pelo COMETA - Comitê de Inovação, Empreendedorismo e Transferência de Tecnologia do IFCE.
+                            </p>
+                        </div>
+
+                        <div class="mt-7 pt-5 border-t border-gray-100 flex items-center justify-between">
+                            <span class="text-sm text-gray-500 border-2 border-gray-400 rounded-xl px-2 py-1">
+                                Apresentação
+                            </span>
+                        </div>
+                    </div>
+                    <img
+                        src="../../../public/images/banner-image-3.jpeg"
+                        alt="Apresentação do projeto ClearFace na primeira mostra de inovação e empreendedorismo do IFCE Campus Cedro"
                         class="h-64 w-full rounded-2xl object-cover object-center md:h-auto md:w-1/2"
                     >
                 </article>
